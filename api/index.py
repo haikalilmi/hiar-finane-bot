@@ -114,19 +114,26 @@ async def test(
         "TEST BERHASIL"
     )
 
-
 async def masuk(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
     try:
-        # Pengecekan argumen dasar
-        if len(context.args) < 2:
+        # Mengambil teks utuh setelah command /masuk
+        text_isi = update.message.text.replace("/masuk", "").strip()
+        
+        # Pisahkan berdasarkan spasi (menangani spasi ganda otomatis)
+        args = text_isi.split()
+
+        if len(args) < 2:
             raise ValueError("Kekurangan argumen")
 
-        amount = float(context.args[0])
-        category = context.args[1]
-        note = " ".join(context.args[2:]) if len(context.args) > 2 else ""
+        # Mengambil angka dan membersihkan jika ada karakter aneh
+        amount_str = args[0].replace(".", "").replace(",", "").strip()
+        amount = float(amount_str)
+        
+        category = args[1]
+        note = " ".join(args[2:]) if len(args) > 2 else ""
 
         await add_transaction(
             update.effective_user.id,
@@ -136,60 +143,56 @@ async def masuk(
             note
         )
 
-        await update.message.reply_text(
-            "Pemasukan berhasil disimpan."
-        )
+        await update.message.reply_text("Pemasukan berhasil disimpan.")
 
-    # Tangkap error jika input user bukan angka (misal: /masuk seratus ...)
     except ValueError:
+        # Kita cetak apa isi args sebenarnya ke log Vercel untuk debug
+        print(f"DEBUG MASUK - Teks asli: '{update.message.text}'")
         await update.message.reply_text(
-            "Format salah!\nPastikan jumlah uang berupa angka tanpa titik/koma.\nContoh: /masuk 100000 Gaji Bulanan"
+            "Format salah!\nPastikan jumlah uang berupa angka tanpa titik/koma.\nContoh: /masuk 100000 Gaji"
         )
-    
-    # Tangkap error sistem (biasanya masalah database)
     except Exception as e:
-        print("ERROR DI FUNGSI MASUK:", str(e)) # Ini akan muncul di log Vercel
-        await update.message.reply_text(
-            f"Gagal menyimpan ke database. Error: {str(e)}"
-        )
+        print("ERROR DI FUNGSI MASUK:", str(e))
+        await update.message.reply_text(f"Gagal menyimpan ke database. Error: {str(e)}")
+
 
 async def keluar(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
     try:
-        # Pengecekan argumen dasar: minimal harus ada jumlah dan kategori
-        if len(context.args) < 2:
+        # Mengambil teks utuh setelah command /keluar
+        text_isi = update.message.text.replace("/keluar", "").strip()
+        args = text_isi.split()
+
+        if len(args) < 2:
             raise ValueError("Kekurangan argumen")
 
-        amount = float(context.args[0])
-        category = context.args[1]
-        note = " ".join(context.args[2:]) if len(context.args) > 2 else ""
+        amount_str = args[0].replace(".", "").replace(",", "").strip()
+        amount = float(amount_str)
+        
+        category = args[1]
+        note = " ".join(args[2:]) if len(args) > 2 else ""
 
         await add_transaction(
             update.effective_user.id,
-            "keluar", # Tipe transaksi diset sebagai keluar
+            "keluar",
             amount,
             category,
             note
         )
 
-        await update.message.reply_text(
-            "Pengeluaran berhasil disimpan."
-        )
+        await update.message.reply_text("Pengeluaran berhasil disimpan.")
 
-    # Tangkap error jika input jumlah uang bukan angka atau argumen kurang
     except ValueError:
+        print(f"DEBUG KELUAR - Teks asli: '{update.message.text}'")
         await update.message.reply_text(
             "Format salah!\nPastikan jumlah uang berupa angka tanpa titik/koma.\nContoh: /keluar 50000 Makan"
         )
-    
-    # Tangkap error sistem, terutama jika query ke PostgreSQL gagal
     except Exception as e:
-        print("ERROR DI FUNGSI KELUAR:", str(e)) # Membantu melacak error di log Vercel
-        await update.message.reply_text(
-            f"Gagal menyimpan ke database. Error: {str(e)}"
-        )
+        print("ERROR DI FUNGSI KELUAR:", str(e))
+        await update.message.reply_text(f"Gagal menyimpan ke database. Error: {str(e)}")
+
 async def summary(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
