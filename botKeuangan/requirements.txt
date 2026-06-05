@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+python-telegram-bot>=20.8
+asyncpg
+pandas
+openpyxl
+python-multipart
