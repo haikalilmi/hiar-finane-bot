@@ -28,7 +28,11 @@ from telegram.ext import (
 # ==========================================
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-DATABASE_URL = os.getenv("DATABASE_URL")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "postgres")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")
 
 app = FastAPI()
@@ -53,16 +57,12 @@ async def get_pool():
     global db_pool
 
     if db_pool is None:
-        # Parsing DATABASE_URL secara otomatis menjadi dictionary komponen database
-        db_config = dj_database_url.config(default=DATABASE_URL)
-        
-        # Masukkan komponennya satu per satu ke dalam asyncpg
         db_pool = await asyncpg.create_pool(
-            user=db_config['USER'],
-            password=db_config['PASSWORD'],
-            host=db_config['HOST'],
-            database=db_config['NAME'],
-            port=db_config['PORT'],
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            database=DB_NAME,
+            port=int(DB_PORT),
             min_size=1,
             max_size=5
         )
