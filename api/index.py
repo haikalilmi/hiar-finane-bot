@@ -3,6 +3,7 @@ import io
 import asyncpg
 import pandas as pd
 import re
+import dj_database_url  # Tambahkan import ini di bagian atas file
 
 from datetime import datetime
 
@@ -52,8 +53,16 @@ async def get_pool():
     global db_pool
 
     if db_pool is None:
+        # Parsing DATABASE_URL secara otomatis menjadi dictionary komponen database
+        db_config = dj_database_url.config(default=DATABASE_URL)
+        
+        # Masukkan komponennya satu per satu ke dalam asyncpg
         db_pool = await asyncpg.create_pool(
-            DATABASE_URL,
+            user=db_config['USER'],
+            password=db_config['PASSWORD'],
+            host=db_config['HOST'],
+            database=db_config['NAME'],
+            port=db_config['PORT'],
             min_size=1,
             max_size=5
         )
