@@ -65,7 +65,8 @@ async def get_pool():
             port=int(DB_PORT),
             min_size=1,
             max_size=5,
-            ssl="require"  # Tambahkan parameter ini untuk memaksa koneksi SSL aman
+            ssl="require",
+            statement_cache_size=0
         )
 
     return db_pool
