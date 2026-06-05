@@ -29,7 +29,7 @@ from telegram.ext import (
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT", "5432")
+DB_PORT = os.getenv("DB_PORT", "6543")
 DB_NAME = os.getenv("DB_NAME", "postgres")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -64,7 +64,8 @@ async def get_pool():
             database=DB_NAME,
             port=int(DB_PORT),
             min_size=1,
-            max_size=5
+            max_size=5,
+            ssl="require"  # Tambahkan parameter ini untuk memaksa koneksi SSL aman
         )
 
     return db_pool
