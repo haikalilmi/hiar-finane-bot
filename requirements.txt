@@ -5,3 +5,4 @@ asyncpg
 pandas
 openpyxl
 python-multipart
+dj-database-url
