@@ -2,6 +2,7 @@ import os
 import io
 import asyncpg
 import pandas as pd
+import re
 
 from datetime import datetime
 
@@ -119,21 +120,29 @@ async def masuk(
     context: ContextTypes.DEFAULT_TYPE
 ):
     try:
-        # Mengambil teks utuh setelah command /masuk
-        text_isi = update.message.text.replace("/masuk", "").strip()
+        # 1. Bersihkan spasi-spasi aneh (unicode/NBSP) menjadi spasi normal
+        clean_text = re.sub(r'\s+', ' ', update.message.text).strip()
         
-        # Pisahkan berdasarkan spasi (menangani spasi ganda otomatis)
-        args = text_isi.split()
+        # 2. Pisahkan teks berdasarkan spasi normal
+        args = clean_text.split(' ')
 
-        if len(args) < 2:
+        # Karena kata pertama adalah '/masuk', maka minimal harus ada 3 elemen 
+        # contoh: ['/masuk', '10000000', 'gaji'] -> panjangnya 3
+        if len(args) < 3:
             raise ValueError("Kekurangan argumen")
 
-        # Mengambil angka dan membersihkan jika ada karakter aneh
-        amount_str = args[0].replace(".", "").replace(",", "").strip()
+        # 3. Ambil angka (elemen indeks ke-1) dan bersihkan dari titik/koma jika ada
+        amount_str = args[1].replace(".", "").replace(",", "").strip()
         amount = float(amount_str)
         
-        category = args[1]
-        note = " ".join(args[2:]) if len(args) > 2 else ""
+        # 4. Ambil kategori (elemen indeks ke-2)
+        category = args[2]
+        
+        # 5. Ambil sisa teks sebagai catatan (jika ada)
+        note = " ".join(args[3:]) if len(args) > 3 else ""
+
+        # Lakukan debug print untuk melihat hasil parser di log Vercel
+        print(f"PARSED SUCCESS -> Amount: {amount}, Category: {category}, Note: {note}")
 
         await add_transaction(
             update.effective_user.id,
@@ -145,14 +154,13 @@ async def masuk(
 
         await update.message.reply_text("Pemasukan berhasil disimpan.")
 
-    except ValueError:
-        # Kita cetak apa isi args sebenarnya ke log Vercel untuk debug
-        print(f"DEBUG MASUK - Teks asli: '{update.message.text}'")
+    except ValueError as val_err:
+        print(f"DEBUG MASUK (ValueError) - Teks: '{update.message.text}' | Detail: {str(val_err)}")
         await update.message.reply_text(
             "Format salah!\nPastikan jumlah uang berupa angka tanpa titik/koma.\nContoh: /masuk 100000 Gaji"
         )
     except Exception as e:
-        print("ERROR DI FUNGSI MASUK:", str(e))
+        print("ERROR SISTEM DI FUNGSI MASUK:", str(e))
         await update.message.reply_text(f"Gagal menyimpan ke database. Error: {str(e)}")
 
 
@@ -161,18 +169,19 @@ async def keluar(
     context: ContextTypes.DEFAULT_TYPE
 ):
     try:
-        # Mengambil teks utuh setelah command /keluar
-        text_isi = update.message.text.replace("/keluar", "").strip()
-        args = text_isi.split()
+        clean_text = re.sub(r'\s+', ' ', update.message.text).strip()
+        args = clean_text.split(' ')
 
-        if len(args) < 2:
+        if len(args) < 3:
             raise ValueError("Kekurangan argumen")
 
-        amount_str = args[0].replace(".", "").replace(",", "").strip()
+        amount_str = args[1].replace(".", "").replace(",", "").strip()
         amount = float(amount_str)
         
-        category = args[1]
-        note = " ".join(args[2:]) if len(args) > 2 else ""
+        category = args[2]
+        note = " ".join(args[3:]) if len(args) > 3 else ""
+
+        print(f"PARSED SUCCESS -> Amount: {amount}, Category: {category}, Note: {note}")
 
         await add_transaction(
             update.effective_user.id,
@@ -184,13 +193,13 @@ async def keluar(
 
         await update.message.reply_text("Pengeluaran berhasil disimpan.")
 
-    except ValueError:
-        print(f"DEBUG KELUAR - Teks asli: '{update.message.text}'")
+    except ValueError as val_err:
+        print(f"DEBUG KELUAR (ValueError) - Teks: '{update.message.text}' | Detail: {str(val_err)}")
         await update.message.reply_text(
             "Format salah!\nPastikan jumlah uang berupa angka tanpa titik/koma.\nContoh: /keluar 50000 Makan"
         )
     except Exception as e:
-        print("ERROR DI FUNGSI KELUAR:", str(e))
+        print("ERROR SISTEM DI FUNGSI KELUAR:", str(e))
         await update.message.reply_text(f"Gagal menyimpan ke database. Error: {str(e)}")
 
 async def summary(
