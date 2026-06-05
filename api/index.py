@@ -120,9 +120,13 @@ async def masuk(
     context: ContextTypes.DEFAULT_TYPE
 ):
     try:
+        # Pengecekan argumen dasar
+        if len(context.args) < 2:
+            raise ValueError("Kekurangan argumen")
+
         amount = float(context.args[0])
         category = context.args[1]
-        note = " ".join(context.args[2:])
+        note = " ".join(context.args[2:]) if len(context.args) > 2 else ""
 
         await add_transaction(
             update.effective_user.id,
@@ -136,24 +140,35 @@ async def masuk(
             "Pemasukan berhasil disimpan."
         )
 
-    except:
+    # Tangkap error jika input user bukan angka (misal: /masuk seratus ...)
+    except ValueError:
         await update.message.reply_text(
-            "Format:\n/masuk jumlah kategori catatan"
+            "Format salah!\nPastikan jumlah uang berupa angka tanpa titik/koma.\nContoh: /masuk 100000 Gaji Bulanan"
         )
-
+    
+    # Tangkap error sistem (biasanya masalah database)
+    except Exception as e:
+        print("ERROR DI FUNGSI MASUK:", str(e)) # Ini akan muncul di log Vercel
+        await update.message.reply_text(
+            f"Gagal menyimpan ke database. Error: {str(e)}"
+        )
 
 async def keluar(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
     try:
+        # Pengecekan argumen dasar: minimal harus ada jumlah dan kategori
+        if len(context.args) < 2:
+            raise ValueError("Kekurangan argumen")
+
         amount = float(context.args[0])
         category = context.args[1]
-        note = " ".join(context.args[2:])
+        note = " ".join(context.args[2:]) if len(context.args) > 2 else ""
 
         await add_transaction(
             update.effective_user.id,
-            "keluar",
+            "keluar", # Tipe transaksi diset sebagai keluar
             amount,
             category,
             note
@@ -163,12 +178,18 @@ async def keluar(
             "Pengeluaran berhasil disimpan."
         )
 
-    except:
+    # Tangkap error jika input jumlah uang bukan angka atau argumen kurang
+    except ValueError:
         await update.message.reply_text(
-            "Format:\n/keluar jumlah kategori catatan"
+            "Format salah!\nPastikan jumlah uang berupa angka tanpa titik/koma.\nContoh: /keluar 50000 Makan"
         )
-
-
+    
+    # Tangkap error sistem, terutama jika query ke PostgreSQL gagal
+    except Exception as e:
+        print("ERROR DI FUNGSI KELUAR:", str(e)) # Membantu melacak error di log Vercel
+        await update.message.reply_text(
+            f"Gagal menyimpan ke database. Error: {str(e)}"
+        )
 async def summary(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
