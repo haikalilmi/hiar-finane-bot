@@ -106,7 +106,7 @@ Format:
 """
     )
 
-    async def test(
+async def test(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
