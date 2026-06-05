@@ -213,6 +213,30 @@ async def keluar(
         print("ERROR SISTEM DI FUNGSI KELUAR:", str(e))
         await update.message.reply_text(f"Gagal menyimpan ke database. Error: {str(e)}")
 
+async def reset(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    user_id = update.effective_user.id
+    pool = await get_pool()
+
+    try:
+        async with pool.acquire() as conn:
+            # Menghapus data spesifik milik user tersebut
+            await conn.execute(
+                "DELETE FROM transactions WHERE user_id = $1", 
+                user_id
+            )
+        
+        await update.message.reply_text(
+            "🧹 Semua riwayat keuangan kamu berhasil dihapus bersih!"
+        )
+    except Exception as e:
+        print("ERROR RESET:", str(e))
+        await update.message.reply_text(
+            f"Gagal mereset data. Error: {str(e)}"
+        )
+
 async def summary(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
@@ -329,48 +353,53 @@ async def export_excel(
     context: ContextTypes.DEFAULT_TYPE
 ):
     user_id = update.effective_user.id
-
     pool = await get_pool()
 
     async with pool.acquire() as conn:
-
         rows = await conn.fetch(
             """
-            SELECT
-            created_at,
-            type,
-            amount,
-            category,
-            note
-            FROM transactions
-            WHERE user_id=$1
+            SELECT 
+                created_at,
+                type,
+                amount,
+                category,
+                note
+            FROM transactions 
+            WHERE user_id=$1 
             ORDER BY created_at DESC
             """,
             user_id
         )
 
-    df = pd.DataFrame(
-        [dict(r) for r in rows]
-    )
+    if not rows:
+        await update.message.reply_text("Belum ada data transaksi untuk diexport.")
+        return
+
+    # Konversi data ke DataFrame
+    df = pd.DataFrame([dict(r) for r in rows])
+    
+    # Hilangkan informasi timezone agar Excel tidak bingung membaca format tanggalnya
+    if 'created_at' in df.columns:
+        df['created_at'] = pd.to_datetime(df['created_at']).dt.tz_localize(None)
 
     output = io.BytesIO()
 
-    with pd.ExcelWriter(
-        output,
-        engine="openpyxl"
-    ) as writer:
-        df.to_excel(
-            writer,
-            index=False
-        )
+    # Tulis ke Excel dan lebarkan kolom otomatis
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Laporan")
+        
+        # Ambil sheet yang baru dibuat untuk mengatur lebar kolom
+        worksheet = writer.sheets["Laporan"]
+        for col in worksheet.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            col_letter = col[0].column_letter
+            worksheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
 
     output.seek(0)
 
     await update.message.reply_document(
-        document=InputFile(
-            output,
-            filename="laporan.xlsx"
-        )
+        document=InputFile(output, filename="laporan_keuangan.xlsx"),
+        caption="Ini laporan keuangan kamu."
     )
 
 # ==========================================
@@ -391,6 +420,10 @@ telegram_app.add_handler(
 
 telegram_app.add_handler(
     CommandHandler("keluar", keluar)
+)
+
+telegram_app.add_handler(
+    CommandHandler("reset", reset)
 )
 
 telegram_app.add_handler(
